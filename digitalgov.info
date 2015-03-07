@@ -1,0 +1,7 @@
+name = DigitalGov
+description = Allow easy configuration of search feeds for DigitalGov indexing
+package = "DigitalGov"
+dependencies[] = services
+dependencies[] = rest_server
+core = 7.x
+version=1.0

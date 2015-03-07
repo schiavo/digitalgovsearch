@@ -1,0 +1,86 @@
+<?php
+
+
+function digitalgov_node_insert($node) {
+    _digitalgov_handle_node($node);
+}
+
+function digitalgov_node_update($node) {
+    _digitalgov_handle_node($node);
+}
+
+function _digitalgov_handle_node($node) {
+  // Optional preprocessing to strip data down to just the required properties
+  // and/or alter formatting of any property data would go here.
+
+  // This is needed because the passed in node has old values, they are somehow cached
+  // See comments at https://api.drupal.org/api/drupal/modules!node!node.api.php/function/hook_node_update/7
+  // or maybe not, seems to be working now.
+  //$node = node_load($node->nid, NULL, TRUE);  
+
+  $properties_to_index = get_index_properties($node); 
+
+  // Convert the node to JSON
+  $index_json = drupal_json_encode($properties_to_index);
+  dpm($index_json);
+
+  return;
+
+  if (!empty($node_json)) {
+    $api_endpoint = "https://domain.com/path/to/endpoint";
+    $request_options = array(
+      'method' => 'POST', // assuming the API wants a POST
+      'data' => 'content-item=' . $node_json, // might need to futz with this if the API wants a JSON payload in the request body
+    );
+    $response = drupal_http_request($api_endpoint, $request_options);
+    // Validate the response here.
+  }
+  else {
+    // watchdog() that we weren't able to convert the node to JSON.
+  }
+}
+
+function get_index_properties($node)
+{
+  $index_properties = new StdClass();
+  $index_properties->title = $node->title;
+  $index_properties->url = get_url($node);
+  $index_properties->summary = get_summary($node);
+  $index_properties->content = get_content($node);
+  $index_properties->updated_at = get_updated_date($node);
+  return $index_properties;
+
+}
+
+function get_summary($node)
+{
+  $summary = $node->body["und"]["0"]["summary"];
+  $summary = trim($summary);
+  if (empty($summary))
+  {
+    $summary = substr($node->body["und"]["0"]["value"], 0, 25);
+  }
+  return $summary;
+}
+
+function get_url($node)
+{
+  $path = $node->path["alias"];
+  if(empty($path))
+  {
+    $path = $node->path["source"];
+  }
+  
+  return url($path, array('absolute' => TRUE));
+
+}
+
+function get_content($node)
+{
+  return $node->body["und"]["0"]["value"];
+}
+
+function get_updated_date($node)
+{
+  return date("c", $node->changed);
+}
