@@ -44,13 +44,18 @@ function _digitalgov_handle_node($node) {
 function get_index_properties($node)
 {
   $index_properties = new StdClass();
-  $index_properties->title = $node->title;
+  $index_properties->title = get_title($node);
   $index_properties->url = get_url($node);
   $index_properties->summary = get_summary($node);
   $index_properties->content = get_content($node);
   $index_properties->updated_at = get_updated_date($node);
   return $index_properties;
 
+}
+
+function get_title($node)
+{
+  return $node->title;
 }
 
 function get_summary($node)
@@ -76,9 +81,18 @@ function get_url($node)
 
 }
 
+// this is where the real work needs to happen. 
+// should look into the idea of rendering first then removing html.
 function get_content($node)
 {
-  return $node->body["und"]["0"]["value"];
+  $content = $node->body["und"]["0"]["value"];
+  foreach ($node as $key => $value) {
+    if (substr($key, 0, 6) == "field_") {
+      $content .= $value["und"]["0"]["value"] . " ";
+    }
+  }
+
+  return $content;
 }
 
 function get_updated_date($node)
