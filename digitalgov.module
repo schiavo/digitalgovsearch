@@ -24,15 +24,16 @@ function _digitalgov_handle_node($node) {
   $index_json = drupal_json_encode($properties_to_index);
   dpm($index_json);
 
-  return;
-
-  if (!empty($node_json)) {
-    $api_endpoint = "https://domain.com/path/to/endpoint";
+  if (!empty($index_json)) {
+    $api_endpoint = "http://digitalgov.com/reflectPost.php";
+    $headers = array('Content-Type' => 'application/x-www-form-urlencoded');
     $request_options = array(
+      'headers' => $headers,
       'method' => 'POST', // assuming the API wants a POST
-      'data' => 'content-item=' . $node_json, // might need to futz with this if the API wants a JSON payload in the request body
+      'data' => 'content-item=' . $index_json, // might need to futz with this if the API wants a JSON payload in the request body
     );
     $response = drupal_http_request($api_endpoint, $request_options);
+    dpm($response);  
     // Validate the response here.
   }
   else {
