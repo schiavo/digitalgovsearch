@@ -25,8 +25,7 @@ function _digitalgov_handle_node($node) {
   dpm($index_json);
 
   if (!empty($index_json)) {
-    global $base_root; 
-    $api_endpoint = $base_root . "/reflectPost.php"; // "http://digitalgov.com/reflectPost.php";
+    $api_endpoint = get_api_endpoint();
     $headers = array('Content-Type' => 'application/x-www-form-urlencoded');
     $request_options = array(
       'headers' => $headers,
@@ -129,4 +128,8 @@ function get_content($node)
 function get_updated_date($node)
 {
   return date("c", $node->changed);
+}
+
+function get_api_endpoint() {
+  return "http://www.davevans.org/reflectPost.php";
 }
