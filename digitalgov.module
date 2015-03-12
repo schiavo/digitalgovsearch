@@ -46,8 +46,14 @@ function get_index_properties($node)
   $index_properties = new StdClass();
   $index_properties->title = get_title($node);
   $index_properties->url = get_url($node);
-  $index_properties->summary = get_summary($node);
   $index_properties->content = get_content($node);
+  
+  $summmary = get_summary($node);
+  if (empty($summary)) {
+    $summary = substr($index_properties->content, 0, 25);
+  }
+  
+  $index_properties->summary = $summary;
   $index_properties->updated_at = get_updated_date($node);
   return $index_properties;
 
@@ -60,11 +66,11 @@ function get_title($node)
 
 function get_summary($node)
 {
-  $summary = $node->body["und"]["0"]["summary"];
-  $summary = trim($summary);
-  if (empty($summary))
-  {
-    $summary = substr($node->body["und"]["0"]["value"], 0, 25);
+  $summary = "";
+  $body = $node->body;
+  if (!empty($body["und"]["0"])) {
+    $summary = $body["und"]["0"]["summary"];
+    $summary = trim($summary);
   }
   return $summary;
 }
@@ -85,14 +91,38 @@ function get_url($node)
 // should look into the idea of rendering first then removing html.
 function get_content($node)
 {
-  $content = $node->body["und"]["0"]["value"];
-  foreach ($node as $key => $value) {
-    if (substr($key, 0, 6) == "field_") {
-      $content .= $value["und"]["0"]["value"] . " ";
+
+  $content = "";
+  //dpm(field_info_instances("node", $node->type));
+  $fields = field_info_instances("node", $node->type);
+  foreach ($fields as $name => $value) {
+    $field = $fields[$name];
+    $display = $fields[$name]['display']['default'];
+    $field_view = field_view_field("node", $node, $name, $display);
+    if(!empty($field_view)) {
+      if ($display['label'] != 'hidden') {
+	$content .= $field_view['#title'] . " ";
+      }
+      //dpm($field_view);
+
+      $field_type = $field_view['#field_type'];
+      $items = $field_view['#items'];
+      foreach ($items as $item) {
+	//dpm($item);
+	if ($field_type == 'entityreference') {
+	  $entity_node = node_load($item['target_id']);
+	  //dpm($entity_node);
+	  $content .= get_content($entity_node);
+	}
+	else {  
+	  $content .= $item['value'] . " ";
+	}
+      }
     }
   }
 
   return $content;
+
 }
 
 function get_updated_date($node)
