@@ -25,7 +25,8 @@ function _digitalgov_handle_node($node) {
   dpm($index_json);
 
   if (!empty($index_json)) {
-    $api_endpoint = "http://digitalgov.com/reflectPost.php";
+    global $base_root; 
+    $api_endpoint = $base_root . "/reflectPost.php"; // "http://digitalgov.com/reflectPost.php";
     $headers = array('Content-Type' => 'application/x-www-form-urlencoded');
     $request_options = array(
       'headers' => $headers,
