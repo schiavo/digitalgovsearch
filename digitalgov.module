@@ -27,7 +27,7 @@ function _digitalgov_handle_node($node) {
     );
     $response = drupal_http_request($api_endpoint, $request_options);
     dpm($response);  
-    // Validate the response here.
+    // Validate the response here, once we know what might be returned from the api.
   }
   else {
     // watchdog() that we weren't able to convert the node to JSON.
@@ -39,10 +39,11 @@ function get_index_properties($node) {
   $index_properties->title = get_title($node);
   $index_properties->url = get_url($node);
   $index_properties->content = get_content($node);
+  $index_properties->structuredContent = get_structured_content($node);
   
   $summary = get_summary($node);
   if (empty($summary)) {
-    $summary = substr($index_properties->content->fields["Body"][0], 0, 25);  // TODO, get this more refined, break on a sentance or word.
+    $summary = get_summary_from_content($index_properties->content);
   }
   
   $index_properties->summary = $summary;
@@ -65,6 +66,11 @@ function get_summary($node) {
   return clean_text($summary);
 }
 
+function get_summary_from_content($content) {
+  $body_summary = substr($index_properties->content, 0, 25);  // TODO, get this more refined, break on a sentance or word.
+  return $body_summary;
+}
+
 function get_url($node) {
   $path = $node->path["alias"];
   if(empty($path))
@@ -79,6 +85,39 @@ function get_url($node) {
 // this is where the real work happens
 // maybe this StdClass should be made into a actual class that has methods for extracting body, etc.
 function get_content($node) {
+  $content = "";
+
+  $fields = field_info_instances("node", $node->type);
+  foreach ($fields as $name => $value) {
+    $field = $fields[$name];
+    $display = $fields[$name]['display']['default'];
+    $field_view = field_view_field("node", $node, $name, $display);
+    if(!empty($field_view)) {
+      if ($display['label'] != 'hidden') {
+        $content .= $field_view['#title'] . " ";
+      }
+
+      $field_title = $field_view['#title'];
+      $field_type = $field_view['#field_type'];
+      $items = $field_view['#items'];
+      foreach ($items as $item) {
+	if ($field_type == 'entityreference') {
+	  $entity_node = node_load($item['target_id']);
+	  $content .= get_content($entity_node);
+	}
+	else {  
+	  $content .= clean_text($item['value']) . " ";
+	}
+      }
+    }
+  }
+
+  return $content;
+}
+
+// this is where the real work happens
+// maybe this StdClass should be made into a actual class that has methods for extracting body, etc.
+function get_structured_content($node) {
   $content = new StdClass();
   $content->fields = array();
 
@@ -95,7 +134,7 @@ function get_content($node) {
       foreach ($items as $item) {
 	if ($field_type == 'entityreference') {
 	  $entity_node = node_load($item['target_id']);
-	  $field_values[] = get_content($entity_node);
+	  $field_values[] = get_structured_content($entity_node);
 	}
 	else {  
 	  $field_values[] = clean_text($item['value']);
