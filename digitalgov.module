@@ -10,13 +10,6 @@ function digitalgov_node_update($node) {
 }
 
 function _digitalgov_handle_node($node) {
-  // Optional preprocessing to strip data down to just the required properties
-  // and/or alter formatting of any property data would go here.
-
-  // This is needed because the passed in node has old values, they are somehow cached
-  // See comments at https://api.drupal.org/api/drupal/modules!node!node.api.php/function/hook_node_update/7
-  // or maybe not, seems to be working now.
-  //$node = node_load($node->nid, NULL, TRUE);  
 
   $properties_to_index = get_index_properties($node); 
 
@@ -30,7 +23,7 @@ function _digitalgov_handle_node($node) {
     $request_options = array(
       'headers' => $headers,
       'method' => 'POST', // assuming the API wants a POST
-      'data' => 'content-item=' . $index_json, // might need to futz with this if the API wants a JSON payload in the request body
+      'data' => 'content-item=' . $index_json
     );
     $response = drupal_http_request($api_endpoint, $request_options);
     dpm($response);  
@@ -41,16 +34,15 @@ function _digitalgov_handle_node($node) {
   }
 }
 
-function get_index_properties($node)
-{
+function get_index_properties($node) {
   $index_properties = new StdClass();
   $index_properties->title = get_title($node);
   $index_properties->url = get_url($node);
   $index_properties->content = get_content($node);
   
-  $summmary = get_summary($node);
+  $summary = get_summary($node);
   if (empty($summary)) {
-    $summary = substr($index_properties->content, 0, 25);
+    $summary = substr($index_properties->content->fields["Body"][0], 0, 25);  // TODO, get this more refined, break on a sentance or word.
   }
   
   $index_properties->summary = $summary;
@@ -59,24 +51,21 @@ function get_index_properties($node)
 
 }
 
-function get_title($node)
-{
-  return $node->title;
+function get_title($node) {
+  return clean_text($node->title);
 }
 
-function get_summary($node)
-{
+function get_summary($node) {
   $summary = "";
   $body = $node->body;
   if (!empty($body["und"]["0"])) {
     $summary = $body["und"]["0"]["summary"];
     $summary = trim($summary);
   }
-  return $summary;
+  return clean_text($summary);
 }
 
-function get_url($node)
-{
+function get_url($node) {
   $path = $node->path["alias"];
   if(empty($path))
   {
@@ -87,49 +76,50 @@ function get_url($node)
 
 }
 
-// this is where the real work needs to happen. 
-// should look into the idea of rendering first then removing html.
-function get_content($node)
-{
+// this is where the real work happens
+// maybe this StdClass should be made into a actual class that has methods for extracting body, etc.
+function get_content($node) {
+  $content = new StdClass();
+  $content->fields = array();
 
-  $content = "";
-  //dpm(field_info_instances("node", $node->type));
   $fields = field_info_instances("node", $node->type);
   foreach ($fields as $name => $value) {
     $field = $fields[$name];
     $display = $fields[$name]['display']['default'];
     $field_view = field_view_field("node", $node, $name, $display);
     if(!empty($field_view)) {
-      if ($display['label'] != 'hidden') {
-	$content .= $field_view['#title'] . " ";
-      }
-      //dpm($field_view);
-
+      $field_title = $field_view['#title'];
       $field_type = $field_view['#field_type'];
       $items = $field_view['#items'];
+      $field_values = array();
       foreach ($items as $item) {
-	//dpm($item);
 	if ($field_type == 'entityreference') {
 	  $entity_node = node_load($item['target_id']);
-	  //dpm($entity_node);
-	  $content .= get_content($entity_node);
+	  $field_values[] = get_content($entity_node);
 	}
 	else {  
-	  $content .= $item['value'] . " ";
+	  $field_values[] = clean_text($item['value']);
 	}
       }
+      $content->fields[$field_title] = $field_values;
     }
   }
 
   return $content;
-
 }
 
-function get_updated_date($node)
-{
+function get_updated_date($node) {
   return date("c", $node->changed);
 }
 
 function get_api_endpoint() {
   return "http://www.davevans.org/reflectPost.php";
+}
+
+function clean_text($text) {
+  
+  $text = str_replace(array("\r\n", "\r", "\n"), " ", $text);
+  $text = strip_tags($text);
+  return $text;
+
 }
