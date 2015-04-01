@@ -82,8 +82,7 @@ function get_url($node) {
 
 }
 
-// this is where the real work happens
-// maybe this StdClass should be made into a actual class that has methods for extracting body, etc.
+// this function pulls all content into a single string
 function get_content($node) {
   $content = "";
 
@@ -115,8 +114,8 @@ function get_content($node) {
   return $content;
 }
 
-// this is where the real work happens
-// maybe this StdClass should be made into a actual class that has methods for extracting body, etc.
+// this function creates an object that maintains the structure of the fields and entity references
+// TODO - maybe this StdClass should be made into a actual class that has methods for extracting body, etc.
 function get_structured_content($node) {
   $content = new StdClass();
   $content->fields = array();
